@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sponsor Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-[#F4F5F7] flex items-center justify-center min-h-screen p-6">
+
+    <div class="bg-white p-8 rounded-xl shadow w-full max-w-lg">
+
+        <h1 class="text-2xl font-bold text-[#04634D] mb-2">
+            Sponsor / Partner Application
+        </h1>
+
+        <p class="text-gray-500 mb-6">
+            Partner with us to support innovation and connect with top talents.
+        </p>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <input name="company_name" placeholder="Company Name"
+                class="w-full mb-4 p-3 border rounded-lg" required>
+
+            <input name="contact_person" placeholder="Contact Person"
+                class="w-full mb-4 p-3 border rounded-lg" required>
+
+            <input name="email" type="email" placeholder="Email Address"
+                class="w-full mb-4 p-3 border rounded-lg" required>
+
+            <input name="phone" placeholder="Phone Number"
+                class="w-full mb-4 p-3 border rounded-lg" required>
+
+            <select name="tier" class="w-full mb-4 p-3 border rounded-lg">
+                <option value="">Select Sponsorship Tier</option>
+                <option value="platinum">Platinum</option>
+                <option value="gold">Gold</option>
+                <option value="silver">Silver</option>
+                <option value="bronze">Bronze</option>
+                <option value="partnership">Partnership</option>
+            </select>
+
+            <textarea name="message" placeholder="Tell us about your interest"
+                class="w-full mb-4 p-3 border rounded-lg"></textarea>
+
+            <button class="w-full bg-[#04634D] hover:bg-[#069C79] text-white py-3 rounded-lg font-semibold">
+                Submit Application
+            </button>
+        </form>
+
+        <!-- 📞 Contact -->
+        <div class="mt-4 text-center">
+            <a href="https://wa.me/2349059284682" 
+               class="text-[#04634D] font-medium hover:underline">
+                Need help? Contact us
+            </a>
+        </div>
+
+    </div>
+
+</body>
+</html>
