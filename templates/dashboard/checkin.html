@@ -80,8 +80,11 @@
     const pendingCount = document.getElementById('pendingCount');
 
     function loadAttendees(query = '') {
-        fetch(`/api/search/?q=${query}&_=${Date.now()}`)
-            .then(res => res.json())
+        fetch(`/api/search/?q=${encodeURIComponent(query)}&_=${Date.now()}`)
+            .then(res => {
+                if(!res.ok) throw new Error("Search API Error");
+                return res.json();
+            })
             .then(data => {
                 table.innerHTML = '';
 

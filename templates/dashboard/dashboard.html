@@ -278,6 +278,7 @@
   </style>
 </head>
 <body>
+  <div style="display:none;">{% csrf_token %}</div>
 
   <aside class="sidebar">
     <a href="{% url 'home' %}" class="brand">IBMTS <span>2026</span></a>
@@ -316,6 +317,9 @@
 
     <!-- Participants Tab -->
     <div id="participants" class="tab-content active">
+      <div style="margin-bottom: 20px;">
+        <input type="text" id="dashboardSearch" placeholder="Search participants by name, email, or phone..." style="width: 100%; max-width: 400px; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+      </div>
       <div class="table-container">
         <table>
           <thead>
@@ -723,6 +727,20 @@
         console.error(e);
         alert('Server error occurred.');
       }
+    }
+
+    // Dashboard Search Filter
+    const dashboardSearch = document.getElementById('dashboardSearch');
+    if (dashboardSearch) {
+      dashboardSearch.addEventListener('input', () => {
+        const term = dashboardSearch.value.toLowerCase();
+        document.querySelectorAll('#participants tbody tr').forEach(row => {
+          if (row.children.length > 1) { // Ignore 'no users' tr
+             const text = row.innerText.toLowerCase();
+             row.style.display = text.includes(term) ? '' : 'none';
+          }
+        });
+      });
     }
   </script>
 </body>
