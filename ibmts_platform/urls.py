@@ -17,11 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from attendees.views import home
+
 urlpatterns = [
+    path('', home, name='home'), 
     path('admin/', admin.site.urls),
+    path('', include('accounts.urls')),
     path('', include('attendees.urls')),
     path('', include('dashboard.urls')),  # 👈 add this
     path('', include('sponsors.urls')),
     path('', include('speakers.urls')),
+
 ]
 

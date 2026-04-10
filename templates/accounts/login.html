@@ -1,0 +1,187 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IBMTS 2026 | Admin Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --emerald: #04634D;
+      --teal: #069C79;
+      --gold: #EAB308;
+      --gold2: #CA9A06;
+      --black: #1A1A1A;
+      --white: #ffffff;
+      --gray: #94a3b8;
+      --error: #ef4444;
+      --bg: #F4F5F7;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--black);
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .login-container {
+      background: var(--white);
+      padding: 48px 40px;
+      border-radius: 20px;
+      box-shadow: 0 16px 40px rgba(4, 99, 77, 0.08);
+      width: 100%;
+      max-width: 420px;
+      border-top: 6px solid var(--emerald);
+      box-sizing: border-box;
+    }
+    .logo-area {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo-area img {
+      max-width: 120px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 8px;
+      color: #111;
+      font-weight: 800;
+      font-size: 1.6rem;
+    }
+    p.subtitle {
+      text-align: center;
+      color: #666;
+      margin-top: 0;
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: #333;
+      font-weight: 600;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e2e8f0;
+      background: #f8fafc;
+      color: #111;
+      border-radius: 8px;
+      box-sizing: border-box;
+      transition: all 0.2s;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--teal);
+      background: var(--white);
+      box-shadow: 0 0 0 4px rgba(6, 156, 121, 0.1);
+    }
+    .btn-login {
+      width: 100%;
+      background: var(--gold);
+      color: #111;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 10px;
+    }
+    .btn-login:hover {
+      background: var(--gold2);
+      transform: translateY(-2px);
+    }
+    .messages {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 24px;
+    }
+    .messages li {
+      background: #fef2f2;
+      color: var(--error);
+      padding: 12px 16px;
+      border-left: 4px solid var(--error);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .back-home {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: var(--emerald);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .back-home:hover {
+      color: var(--teal);
+    }
+
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 40px 24px;
+      }
+      h2 {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo-area">
+      <!-- You can dynamically optionally use the logo image here if preferred -->
+      <!-- <img src="{% static 'images/logo.png' %}" alt="IBMTS"> -->
+      <a href="{% url 'home' %}" style="text-decoration: none; color: inherit;">
+          <h1 style="margin:0; font-weight: 900; letter-spacing: 1px; color:#111;">IBMTS <span style="color: var(--emerald);">2026</span></h1>
+          <p style="margin: 5px 0 0; font-size: 0.8rem; color: var(--emerald); text-transform: uppercase; font-weight: 700; letter-spacing:1px;">Admin Portal</p>
+      </a>
+    </div>
+    
+    <h2>Welcome Back!</h2>
+    <p class="subtitle">Secure login to your dashboard</p>
+
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Enter your username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="btn-login">Login to Dashboard</button>
+    </form>
+    
+    <a href="{% url 'home' %}" class="back-home">← Back to Main Site</a>
+  </div>
+</body>
+</html>

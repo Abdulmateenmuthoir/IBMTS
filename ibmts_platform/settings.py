@@ -120,3 +120,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# Auth Settings
+LOGIN_URL = 'admin_login'
+LOGIN_REDIRECT_URL = 'admin_dashboard'
+
+# Email Settings (Configure these with your actual details)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'Ibadanmuslimtechsummit@gmail.com' # Replace with actual email
+EMAIL_HOST_PASSWORD = '' # Replace with App Password
+DEFAULT_FROM_EMAIL = 'IBMTS 2026 Organizers <Ibadanmuslimtechsummit@gmail.com>'

@@ -18,6 +18,10 @@
                class="bg-[#069C79] hover:bg-[#04634D] text-white px-4 py-2 rounded-lg shadow">
                 + Quick Register
             </a>
+            <a href="{% url 'admin_logout' %}" 
+               class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow font-semibold">
+                Log Out
+            </a>
         </div>
     </div>
 
@@ -76,18 +80,12 @@
     const pendingCount = document.getElementById('pendingCount');
 
     function loadAttendees(query = '') {
-        fetch(`/api/search/?q=${query}`)
+        fetch(`/api/search/?q=${query}&_=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
                 table.innerHTML = '';
 
-                let total = 0;
-                let checked = 0;
-
                 data.attendees.forEach(a => {
-                    total++;
-                    if (a.checked_in) checked++;
-
                     table.innerHTML += `
                         <tr class="border-t hover:bg-gray-50 transition">
                             <td class="p-4 font-medium">${a.name}</td>
@@ -103,20 +101,16 @@
                             <td class="p-4">
                                 ${!a.checked_in 
                                     ? `<button onclick="checkIn(${a.id})" 
-                                        class="bg-[#0255C2] hover:bg-[#04634D] text-white px-3 py-1 rounded-lg">
+                                        class="bg-[#069C79] hover:bg-[#04634D] text-white px-3 py-1 rounded-lg transition shadow-sm font-semibold">
                                         Check-in
                                        </button>`
-                                    : '<span class="text-gray-400">Done</span>'}
+                                    : '<span class="text-gray-400 font-semibold">Done</span>'}
                             </td>
                         </tr>
                     `;
                 });
 
-                totalCount.innerText = total;
-                checkedCount.innerText = checked;
-                pendingCount.innerText = total - checked;
-
-                if (total === 0) {
+                if (data.attendees.length === 0) {
                     table.innerHTML = `
                         <tr>
                             <td colspan="5" class="p-6 text-center text-gray-500">
@@ -128,6 +122,17 @@
             });
     }
 
+    function syncStats() {
+        fetch(`/api/checkin-sync/?_=${Date.now()}`)
+            .then(res => res.json())
+            .then(data => {
+                totalCount.innerText = data.total_registered;
+                checkedCount.innerText = data.total_checked_in;
+                pendingCount.innerText = data.total_registered - data.total_checked_in;
+            })
+            .catch(() => {});
+    }
+
     // 🔍 Live search
     input.addEventListener('keyup', () => {
         loadAttendees(input.value);
@@ -135,13 +140,27 @@
 
     // ⚡ Check-in
     function checkIn(id) {
-        fetch(`/checkin/${id}/`)
-            .then(() => loadAttendees(input.value));
+        fetch(`/checkin/${id}/`, { method: 'GET' }) // Works fine with Django mapping to get query or simple function call
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    loadAttendees(input.value);
+                    syncStats();
+                }
+            });
     }
+
+    // Background polling every 5 seconds to sync stats and current search view
+    setInterval(() => {
+        syncStats();
+        // Since we also want any background check-ins by others to reflect if we are viewing them:
+        loadAttendees(input.value);
+    }, 5000);
 
     // 🚀 Load on page start
     document.addEventListener("DOMContentLoaded", () => {
         loadAttendees();
+        syncStats();
     });
     </script>
 
