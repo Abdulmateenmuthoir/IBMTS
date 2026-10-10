@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>IBMTS 2026 | Admin Dashboard</title>
+  <title>IBMTS 2027 | Admin Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -281,7 +281,7 @@
   <div style="display:none;">{% csrf_token %}</div>
 
   <aside class="sidebar">
-    <a href="{% url 'home' %}" class="brand">IBMTS <span>2026</span></a>
+    <a href="{% url 'home' %}" class="brand">IBMTS <span>2027</span></a>
     <ul class="nav-menu">
       <li><a href="{% url 'admin_dashboard' %}" class="active">Overview</a></li>
       <li><a href="{% url 'checkin' %}" target="_blank">Launch Check-in Portal ↗</a></li>
@@ -312,7 +312,31 @@
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('participants')">Participants</button>
       <button class="tab-btn" onclick="switchTab('speakers')">Speaker Applications</button>
+      <button class="tab-btn" onclick="switchTab('content')">Website Content</button>
       <button class="tab-btn" onclick="switchTab('staff')">Staff Management</button>
+    </div>
+
+    <div id="content" class="tab-content">
+      <h2 style="color:var(--emerald);">Website Content Manager</h2>
+      <p style="color:var(--text-muted);">Add people and organisations that appear on the public homepage. Full editing, visibility and deletion controls are also available in Django Admin.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:24px 0;">
+        <button class="btn btn-primary" onclick="addSiteContent('speaker')">+ Add Display Speaker</button>
+        <button class="btn btn-primary" onclick="addSiteContent('testimonial')">+ Add Testimonial</button>
+        <button class="btn btn-primary" onclick="addSiteContent('team')">+ Add Team Member</button>
+        <button class="btn btn-primary" onclick="addSiteContent('sponsor')">+ Add Sponsor</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;">
+        <form method="post" enctype="multipart/form-data" action="/dashboard/content/speaker/upload/">{% csrf_token %}<strong>Add speaker with photo</strong><input required name="name" placeholder="Name" style="width:100%;margin:8px 0;padding:8px"><input name="title" placeholder="Role / topic" style="width:100%;margin-bottom:8px;padding:8px"><input required type="file" name="image" accept="image/*"><button class="btn btn-primary" style="margin-top:8px">Save speaker</button></form>
+        <form method="post" enctype="multipart/form-data" action="/dashboard/content/testimonial/upload/">{% csrf_token %}<strong>Add testimonial with photo</strong><input required name="name" placeholder="Name" style="width:100%;margin:8px 0;padding:8px"><input name="role" placeholder="Role" style="width:100%;margin-bottom:8px;padding:8px"><textarea required name="quote" placeholder="Testimonial" style="width:100%;margin-bottom:8px;padding:8px"></textarea><input type="file" name="image" accept="image/*"><button class="btn btn-primary" style="margin-top:8px">Save testimonial</button></form>
+        <form method="post" enctype="multipart/form-data" action="/dashboard/content/team/upload/">{% csrf_token %}<strong>Add team member with photo</strong><input required name="name" placeholder="Name" style="width:100%;margin:8px 0;padding:8px"><input name="role" placeholder="Role" style="width:100%;margin-bottom:8px;padding:8px"><input type="file" name="image" accept="image/*"><button class="btn btn-primary" style="margin-top:8px">Save team member</button></form>
+        <form method="post" enctype="multipart/form-data" action="/dashboard/content/sponsor/upload/">{% csrf_token %}<strong>Add sponsor logo</strong><input required name="name" placeholder="Company name" style="width:100%;margin:8px 0;padding:8px"><input required type="file" name="image" accept="image/*"><button class="btn btn-primary" style="margin-top:8px">Save sponsor</button></form>
+      </div>
+      <div class="table-container"><table><thead><tr><th>Content type</th><th>Items</th><th>Admin management</th></tr></thead><tbody>
+        <tr><td>Display speakers</td><td>{{ speakers|length }}</td><td><a href="/admin/speakers/speaker/">Manage speakers</a></td></tr>
+        <tr><td>Testimonials</td><td>{{ testimonials|length }}</td><td><a href="/admin/dashboard/testimonial/">Manage testimonials</a></td></tr>
+        <tr><td>Organising team</td><td>{{ team_members|length }}</td><td><a href="/admin/dashboard/teammember/">Manage team</a></td></tr>
+        <tr><td>Sponsors</td><td>{{ sponsors|length }}</td><td><a href="/admin/sponsors/sponsor/">Manage sponsors</a></td></tr>
+      </tbody></table></div>
     </div>
 
     <!-- Participants Tab -->
@@ -678,6 +702,21 @@
           window.location.reload(); 
         }
       } catch (e) { console.error(e); }
+    }
+
+    async function addSiteContent(type) {
+      const nameLabel = type === 'sponsor' ? 'Company name' : 'Name';
+      const name = prompt(nameLabel + ':'); if (!name) return;
+      const role = type === 'speaker' ? prompt('Role or session title:') : type === 'testimonial' || type === 'team' ? prompt('Role:') : '';
+      const photoField = type === 'sponsor' ? 'logo_url' : 'photo_url';
+      const photoUrl = prompt(type === 'sponsor' ? 'Logo URL (optional):' : 'Photo URL (optional):') || '';
+      const data = type === 'sponsor' ? {company_name:name, logo_url:photoUrl} : {name:name, [photoField]:photoUrl};
+      if (type === 'speaker') { data.display_title = role || ''; data.topic = role || ''; data.bio = ''; }
+      if (type === 'testimonial') { data.role = role || ''; data.quote = prompt('Testimonial quote:') || ''; if (!data.quote) return; }
+      if (type === 'team') { data.role = role || ''; }
+      const res = await fetch(`/dashboard/content/${type}/create/`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrftoken}, body:JSON.stringify(data)});
+      const result = await res.json();
+      if (result.success) window.location.reload(); else alert(result.error || 'Could not save content.');
     }
 
     // Staff Creation Logic

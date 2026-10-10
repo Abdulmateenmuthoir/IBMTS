@@ -5,7 +5,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-[#F4F5F7] flex items-center justify-center min-h-screen p-6">
+<body class="bg-[#F4F5F7] min-h-screen">
+    {% include 'includes/public_nav.html' %}
+    <main class="flex items-center justify-center p-6">
 
     <div class="bg-white p-8 rounded-xl shadow w-full max-w-lg">
 
@@ -14,8 +16,24 @@
         </h1>
 
         <p class="text-gray-500 mb-6">
-            Join 500+ participants for a day of learning, networking, and innovation.
+            Join 5,000+ participants for a day of learning, networking, and innovation.
         </p>
+
+        <div class="mb-6 rounded-lg border border-[#EAB308] bg-yellow-50 p-4 text-center">
+            {% if is_early_bird %}
+                <p class="font-bold text-[#04634D]">Early-bird ticket: ₦{{ ticket_price|floatformat:0 }}</p>
+                <p class="mt-1 text-sm text-gray-600">Offer ends October 30. Regular price: ₦5,000.</p>
+            {% else %}
+                <p class="font-bold text-[#04634D]">IBMTS 2027 ticket: ₦{{ ticket_price|floatformat:0 }}</p>
+            {% endif %}
+            <p class="mt-2 text-sm text-gray-600">Venue: The International Conference Centre, University of Ibadan (UI-ICC)</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
 
         <form method="POST">
             {% csrf_token %}
@@ -37,7 +55,7 @@
             </select>
 
             <button class="w-full bg-[#04634D] hover:bg-[#069C79] text-white py-3 rounded-lg font-semibold">
-                Register Now
+                Continue to secure payment
             </button>
         </form>
 
@@ -51,5 +69,6 @@
 
     </div>
 
+    </main>
 </body>
 </html>

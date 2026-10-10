@@ -5,7 +5,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-[#F4F5F7] flex items-center justify-center h-screen">
+<body class="bg-[#F4F5F7] min-h-screen">
+    {% include 'includes/public_nav.html' %}
+    <main class="flex items-center justify-center min-h-[80vh] p-6">
 
     <div class="bg-white p-10 rounded-xl shadow text-center max-w-md">
 
@@ -34,5 +36,6 @@
 
     </div>
 
+    </main>
 </body>
 </html>

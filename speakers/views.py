@@ -18,8 +18,8 @@ def speaker_apply(request):
         # Send Speaker Acknowledgement Email
         html_message = render_to_string('emails/speaker_ack.html', {'speaker': speaker})
         send_mail(
-            subject='IBMTS 2026 - Speaker Application Received',
-            message=f'Hello {speaker.name}, we have received your speaker application for IBMTS 2026.',
+            subject='IBMTS 2027 - Speaker Application Received',
+            message=f'Hello {speaker.name}, we have received your speaker application for IBMTS 2027.',
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[speaker.email],
             fail_silently=True,

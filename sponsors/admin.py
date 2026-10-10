@@ -8,5 +8,7 @@ from .models import Sponsor
 
 @admin.register(Sponsor)
 class SponsorAdmin(admin.ModelAdmin):
-    list_display = ('company_name', 'email', 'status')
+    list_display = ('company_name', 'email', 'status', 'sort_order', 'display_on_site')
     search_fields = ('company_name', 'email')
+    list_filter = ('status', 'display_on_site')
+    list_editable = ('sort_order', 'display_on_site')

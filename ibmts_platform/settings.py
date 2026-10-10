@@ -11,9 +11,25 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_local_env():
+    """Load local secrets without overriding values supplied by the host."""
+    env_file = BASE_DIR / '.env'
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if line and not line.startswith('#') and '=' in line:
+            key, value = line.split('=', 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_local_env()
 
 
 # Quick-start development settings - unsuitable for production
@@ -128,6 +144,9 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Auth Settings
 LOGIN_URL = 'admin_login'
 LOGIN_REDIRECT_URL = 'admin_dashboard'
@@ -139,4 +158,11 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'Ibadanmuslimtechsummit@gmail.com' # Replace with actual email
 EMAIL_HOST_PASSWORD = '' # Replace with App Password
-DEFAULT_FROM_EMAIL = 'IBMTS 2026 Organizers <Ibadanmuslimtechsummit@gmail.com>'
+DEFAULT_FROM_EMAIL = 'IBMTS 2027 Organizers <Ibadanmuslimtechsummit@gmail.com>'
+
+# Set this in the deployment environment. Do not commit Paystack keys.
+PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
+PAYSTACK_CALLBACK_URL = os.environ.get('PAYSTACK_CALLBACK_URL', '')
+EVENT_STANDARD_PRICE = 5000
+EVENT_EARLY_BIRD_PRICE = 3000
+EVENT_EARLY_BIRD_END = '2026-10-30'

@@ -29,8 +29,15 @@ class Sponsor(models.Model):
 
     message = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    display_on_site = models.BooleanField(default=False)
+    logo_url = models.URLField(blank=True, help_text='Public logo URL shown on the website')
+    logo = models.ImageField(upload_to='sponsors/', blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.company_name
+
+    class Meta:
+        ordering = ('sort_order', 'company_name')
