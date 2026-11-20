@@ -14,56 +14,21 @@ python manage.py runserver
 
 For local checkout testing, create a `.env` containing `PAYSTACK_SECRET_KEY` with a Paystack **test** secret key. `.env.example` contains production defaults, so do not copy it unchanged for local development. `.env` is ignored by Git. The local default email backend prints confirmation messages to the console.
 
-## Deploy to PythonAnywhere
+## Deploy to cPanel
 
-Create a PythonAnywhere web app with manual Django configuration and a Python version supported by the account. In a Bash console, clone the repository into your home directory and create the virtual environment with that same Python version:
+This project needs a cPanel host that supports Python WSGI applications through **Setup Python App** (CloudLinux Python Selector) or **Application Manager** (Passenger). A normal PHP-only cPanel account cannot run Django. The host must provide a way to install `requirements.txt` and run a one-time Python script.
 
-```sh
-cd ~
-git clone https://github.com/Abdulmateenmuthoir/IBMTS.git
-cd IBMTS
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env
-chmod 600 .env
-```
+### Upload without Terminal
 
-Replace `python3.12` with the Python version selected for the web app. Edit `~/IBMTS/.env` on the host. Set a newly generated `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, the PythonAnywhere hostname in `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`, and production Paystack and email credentials. Set `PAYSTACK_CALLBACK_URL` to `https://YOUR-HOSTNAME/payment/callback/`. Keep live keys out of Git and logs.
+1. In cPanel, open **Setup Python App** and create a Python app for your domain. Select Python 3.10 or newer if available, set the application root to `IBMTS`, and set the app URL to the domain root.
+2. Upload `IBMTS-cpanel-deploy.zip` in **File Manager** to `/home/CPANEL-USER/IBMTS` and use **Extract**. Extract the archive contents directly into this folder. It excludes `.env`, the local SQLite database, `.git`, virtualenvs, and cPanel's generated `passenger_wsgi.py` wrapper.
+3. Return to the Python app page. Under **Configuration files**, enter `requirements.txt`, click **Add**, then click **Run Pip Install**. Wait for installation to finish.
+4. Set **Application startup file** to `ibmts_platform/wsgi.py` and **Application Entry Point** to `application`. Keep cPanel's generated `passenger_wsgi.py` file; do not set it as its own startup file, or Passenger can recursively load itself.
+5. Add the required settings in the app page's **Environment variables** section. Use your exact domain in `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, and `PAYSTACK_CALLBACK_URL`. Keep live keys out of Git and chat.
+6. Enable HTTPS for the domain through the host's SSL/AutoSSL section before serving requests, because production redirects HTTP to HTTPS.
+7. To create the database and collect static files, enter `/home/CPANEL-USER/IBMTS/cpanel_setup.py` in **Execute python script** and click **Run Script**. The helper runs migrations and collects static files. If `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL`, and `DJANGO_SUPERUSER_PASSWORD` are configured for the app, it also creates that admin user. Remove the temporary password variable after setup.
+8. Restart the Python app from its cPanel page and open `https://YOUR-DOMAIN/`. The new database is empty; add speaker and sponsor entries in `/admin/`.
 
-In the PythonAnywhere Web tab:
+In Paystack's dashboard, set the webhook URL to `https://YOUR-DOMAIN/payment/webhook/` and set the matching webhook signing secret in the app's environment variables as `PAYSTACK_WEBHOOK_SECRET`. Start with test-mode credentials, complete a checkout, and confirm the attendee is marked paid. Then replace both Paystack secrets with the live-mode values when ready to accept real payments. Keep all secrets out of Git and chat.
 
-1. Set the source code directory to `/home/YOUR-USERNAME/IBMTS` and the virtualenv to `/home/YOUR-USERNAME/IBMTS/.venv`.
-2. Edit the generated WSGI file and replace its Django section with:
-
-   ```python
-   import os
-   import sys
-
-   project_home = '/home/YOUR-USERNAME/IBMTS'
-   if project_home not in sys.path:
-       sys.path.insert(0, project_home)
-   os.chdir(project_home)
-   os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ibmts_platform.settings')
-
-   from django.core.wsgi import get_wsgi_application
-   application = get_wsgi_application()
-   ```
-
-   Settings load the private `.env` from the project directory.
-3. Add a static file mapping from `/static/` to `/home/YOUR-USERNAME/IBMTS/staticfiles` and a media mapping from `/media/` to `/home/YOUR-USERNAME/IBMTS/media`.
-4. In a Bash console, run:
-
-   ```sh
-   cd ~/IBMTS
-   .venv/bin/python manage.py migrate
-   .venv/bin/python manage.py collectstatic --noinput
-   .venv/bin/python manage.py createsuperuser
-   ```
-
-5. Enable HTTPS for the site, then reload the web app from the Web tab.
-
-In Paystack's dashboard, set the webhook URL to `https://YOUR-HOSTNAME/payment/webhook/`. Configure `PAYSTACK_WEBHOOK_SECRET` from the dashboard's webhook signing secret. The webhook confirms payments independently of the customer's browser return; the callback also verifies the transaction server to server.
-
-Start with Paystack test credentials and complete a test checkout before changing `PAYSTACK_SECRET_KEY` to a live key. Confirm that the webhook is received and that a paid attendee appears in the admin dashboard. Never use a live key for a test checkout or publish either key.
-
-PythonAnywhere's current Django deployment guide: <https://help.pythonanywhere.com/pages/DeployExistingDjangoProject/>.
+If the cPanel app page has no package installer or script runner, ask the host whether those features are enabled for your Python app. cPanel's WSGI setup requires hosting-provider support for Python and Passenger: <https://docs.cpanel.net/knowledge-base/web-services/how-to-install-a-python-wsgi-application/>.
