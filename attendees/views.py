@@ -1,8 +1,10 @@
 import hashlib
 import hmac
 import json
+import logging
 import uuid
 from datetime import date
+from datetime import datetime, timezone as datetime_timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -23,6 +25,7 @@ from sponsors.models import Sponsor
 from dashboard.models import TeamMember, Testimonial
 
 PAYSTACK_API = 'https://api.paystack.co/transaction'
+logger = logging.getLogger(__name__)
 
 
 def current_ticket_price():
@@ -33,6 +36,8 @@ def current_ticket_price():
 
 def paystack_request(path, method='GET', payload=None):
     """Call Paystack only from the server; never expose the secret key."""
+    if not settings.PAYSTACK_SECRET_KEY:
+        raise ValueError('Paystack secret key is not configured.')
     headers = {
         'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
         # Paystack's edge rejects Python's default urllib user agent.
@@ -60,7 +65,7 @@ def send_registration_email(attendee):
     if attendee.registration_email_sent:
         return
     html_message = render_to_string('emails/registration_confirm.html', {'attendee': attendee})
-    send_mail(
+    sent = send_mail(
         subject='Welcome to IBMTS 2027 - Registration Confirmed',
         message=f'Hello {attendee.name}, your payment and registration for IBMTS 2027 are confirmed.',
         from_email=settings.DEFAULT_FROM_EMAIL,
@@ -68,22 +73,27 @@ def send_registration_email(attendee):
         fail_silently=True,
         html_message=html_message,
     )
-    attendee.registration_email_sent = True
-    attendee.save(update_fields=['registration_email_sent'])
+    if sent:
+        attendee.registration_email_sent = True
+        attendee.save(update_fields=['registration_email_sent'])
 
 
 def verify_payment(attendee):
     """Verify reference, amount and currency with Paystack before registration."""
     response = paystack_request(f'/verify/{attendee.payment_reference}')
     transaction = response.get('data', {})
-    valid = (
+    try:
+        amount_matches = int(transaction.get('amount', -1)) == attendee.ticket_amount * 100
+    except (TypeError, ValueError):
+        amount_matches = False
+    valid = bool(
         response.get('status') and transaction.get('status') == 'success'
         and transaction.get('reference') == attendee.payment_reference
-        and transaction.get('currency') == 'NGN'
-        and transaction.get('amount') == attendee.ticket_amount * 100
+        and transaction.get('currency') == 'NGN' and amount_matches
     )
     if not valid:
-        attendee.payment_status = transaction.get('status', 'failed')
+        status = transaction.get('status', '')
+        attendee.payment_status = status if status in {'abandoned', 'failed', 'ongoing', 'pending', 'processing', 'reversed'} else 'verification_failed'
         attendee.save(update_fields=['payment_status'])
         return False
     if not attendee.is_paid:
@@ -124,6 +134,7 @@ def register(request):
     attendee.ticket_amount, attendee.payment_status = price, 'pending'
     attendee.payment_reference = f'IBMTS-{uuid.uuid4().hex[:24]}'
     attendee.save()
+    request.session['pending_attendee_id'] = attendee.pk
 
     callback_url = getattr(settings, 'PAYSTACK_CALLBACK_URL', '') or request.build_absolute_uri(reverse('payment_callback'))
     payload = {
@@ -134,9 +145,10 @@ def register(request):
     try:
         response = paystack_request('/initialize', method='POST', payload=payload)
         authorization_url = response.get('data', {}).get('authorization_url')
-        if not response.get('status') or not authorization_url:
+        if not response.get('status') or not authorization_url or not authorization_url.startswith('https://'):
             raise ValueError(response.get('message', 'Could not start payment.'))
     except (HTTPError, URLError, ValueError, TimeoutError):
+        logger.exception('Paystack transaction initialization failed.')
         messages.error(request, 'Unable to start payment. Please try again in a moment.')
         return redirect('register')
     return redirect(authorization_url)
@@ -144,11 +156,16 @@ def register(request):
 
 def payment_callback(request):
     attendee = get_object_or_404(Attendee, payment_reference=request.GET.get('reference', ''))
+    if request.session.get('pending_attendee_id') != attendee.pk:
+        messages.error(request, 'This payment session could not be matched. Please contact the organisers if you were charged.')
+        return redirect('register')
     try:
         if verify_payment(attendee):
+            request.session['confirmed_attendee_id'] = attendee.pk
+            request.session.pop('pending_attendee_id', None)
             return redirect('register_success')
     except (HTTPError, URLError, ValueError, TimeoutError):
-        pass
+        logger.exception('Paystack transaction verification failed for attendee %s.', attendee.pk)
     messages.error(request, 'We could not confirm your payment. If you were charged, contact the organisers with your payment reference.')
     return redirect('register')
 
@@ -157,8 +174,7 @@ def payment_callback(request):
 def paystack_webhook(request):
     if request.method != 'POST' or not settings.PAYSTACK_SECRET_KEY:
         return HttpResponseBadRequest()
-    expected = hmac.new(settings.PAYSTACK_SECRET_KEY.encode(), request.body, hashlib.sha512).hexdigest()
-    if not hmac.compare_digest(request.headers.get('x-paystack-signature', ''), expected):
+    if not valid_paystack_signature(request):
         return HttpResponse(status=401)
     try:
         event = json.loads(request.body)
@@ -171,7 +187,40 @@ def paystack_webhook(request):
     return HttpResponse(status=200)
 
 
+def valid_paystack_signature(request):
+    """Support Paystack's timestamped webhook secret and legacy signature."""
+    signing_secret = settings.PAYSTACK_WEBHOOK_SECRET
+    signature_header = request.headers.get('Paystack-Signature', '')
+    if signing_secret and signature_header:
+        fields = []
+        for part in signature_header.split(','):
+            if '=' in part:
+                fields.append(part.strip().split('=', 1))
+        values = {key: value for key, value in fields}
+        try:
+            timestamp = int(values['t'])
+        except (KeyError, ValueError):
+            return False
+        if abs(datetime.now(datetime_timezone.utc).timestamp() - timestamp) > 300:
+            return False
+        message = str(timestamp).encode() + b'.' + request.body
+        expected = hmac.new(signing_secret.encode(), message, hashlib.sha512).hexdigest()
+        signatures = []
+        for key, value in fields:
+            if key == 'v1' and ':' in value:
+                signatures.append(value.split(':', 1)[1])
+        return any(hmac.compare_digest(signature.encode(), expected.encode()) for signature in signatures)
+
+    # Paystack's legacy x-paystack-signature is keyed with the API secret.
+    expected = hmac.new(settings.PAYSTACK_SECRET_KEY.encode(), request.body, hashlib.sha512).hexdigest()
+    return hmac.compare_digest(request.headers.get('x-paystack-signature', '').encode(), expected.encode())
+
+
 def register_success(request):
+    attendee_id = request.session.get('confirmed_attendee_id')
+    if not attendee_id or not Attendee.objects.filter(pk=attendee_id, is_paid=True).exists():
+        return redirect('register')
+    request.session.pop('confirmed_attendee_id', None)
     return render(request, 'attendees/success.html')
 
 
